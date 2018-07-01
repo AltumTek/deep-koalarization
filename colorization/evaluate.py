@@ -8,6 +8,9 @@ from colorization.training_utils import evaluation_pipeline, \
 # PARAMETERS
 run_id = 'run{}'.format(1)
 val_number_of_images = 100
+batch_size = 10
+batches = val_number_of_images // batch_size
+costs = []
 
 # START
 sess = tf.Session()
@@ -15,7 +18,7 @@ K.set_session(sess)
 
 # Build the network and the various operations
 col = Colorization(256)
-evaluations_ops = evaluation_pipeline(col, val_number_of_images)
+evaluations_ops = evaluation_pipeline(col, batch_size)
 summary_writer = metrics_system(run_id, sess)
 saver, checkpoint_paths, latest_checkpoint = checkpointing_system(run_id)
 
@@ -37,9 +40,14 @@ with sess.as_default():
         print('No checkpoint found in:', checkpoint_paths)
 
     # Evaluation (epoch=-1 to say that this is an evaluation after training)
-    res = sess.run(evaluations_ops)
-    print('Cost: {}'.format(res['cost']))
-    plot_evaluation(res, run_id, epoch=-1)
+    for batch in range(batches):
+        print('Batch: {}/{}'.format(batch, batches), run_id)
+        res = sess.run(evaluations_ops)
+        plot_evaluation(res, run_id, epoch="-1_{}".format(batch))
+        print('Batch Cost: {}'.format(res['cost']))
+        costs.append(res['cost'])
+
+    print('Average cost: {}'.format(sum(costs)/len(costs)))
 
     # Finish off the filename queue coordinator.
     coord.request_stop()
